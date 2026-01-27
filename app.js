@@ -27,10 +27,10 @@ app.use(
 );
 app.use(express.json());
 
-app.use("/api/notes", noteRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/skills", skillRoutes);
-app.use("/api/tasks", taskRoutes);
+app.use("/notes", noteRoutes);
+app.use("/auth", authRoutes);
+app.use("/skills", skillRoutes);
+app.use("/tasks", taskRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
