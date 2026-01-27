@@ -11,6 +11,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://skill-tracker-frontend-kxbyaq967-logic-lords.vercel.app",
+  "https://skill-tracker-frontend-git-main-logic-lords.vercel.app",
 ];
 
 app.use(
