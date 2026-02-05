@@ -1,7 +1,11 @@
 import asyncHandler from "express-async-handler";
 import Task from "../models/taskModel.js";
 import cache from "../utils/cache.js";
+import {clearUserSkillCache} from "../utils/clearUserSkillCache.js";
 
+/* ---------------------------------- */
+/* ➕ Add Task */
+/* ---------------------------------- */
 export const addTask = asyncHandler(async (req, res) => {
   const {title} = req.body;
   const {skillId} = req.params;
@@ -12,33 +16,50 @@ export const addTask = asyncHandler(async (req, res) => {
     title,
   });
 
-  cache.del(`skills_${req.user._id}`);
+  // ❗ clear skills cache (progress changes)
+  clearUserSkillCache(req.user._id);
+
+  // ❗ clear all task cache for this skill
+  cache.keys().forEach((key) => {
+    if (key.startsWith(`tasks_${req.user._id}_${skillId}`)) {
+      cache.del(key);
+    }
+  });
+
   res.status(201).json(task);
 });
 
+/* ---------------------------------- */
+/* 📥 Get Tasks By Skill (CACHED) */
+/* ---------------------------------- */
 export const getTasksBySkill = asyncHandler(async (req, res) => {
   const {skillId} = req.params;
 
-  const search = req.query.search; // ✅ correct variable
+  const search = req.query.search || "all";
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 5;
-  const completed = req.query.completed;
+  const completed = req.query.completed || "all";
+
+  const cacheKey = `tasks_${req.user._id}_${skillId}_${search}_${completed}_${page}`;
+
+  // 1️⃣ Check cache
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    return res.status(200).json(cachedData);
+  }
 
   const skip = (page - 1) * limit;
 
-  // ✅ base filter
   let filter = {
     user: req.user._id,
     skill: skillId,
   };
 
-  // ✅ apply text search only if provided
-  if (search) {
+  if (search !== "all") {
     filter.$text = {$search: search};
   }
 
-  // ✅ completed filter
-  if (completed !== undefined) {
+  if (completed !== "all") {
     filter.completed = completed === "true";
   }
 
@@ -49,14 +70,22 @@ export const getTasksBySkill = asyncHandler(async (req, res) => {
 
   const totalTasks = await Task.countDocuments(filter);
 
-  res.status(200).json({
+  const response = {
     page,
     totalPages: Math.ceil(totalTasks / limit),
     totalTasks,
     tasks,
-  });
+  };
+
+  // 2️⃣ Save cache
+  cache.set(cacheKey, response);
+
+  res.status(200).json(response);
 });
 
+/* ---------------------------------- */
+/* 🔁 Toggle Task */
+/* ---------------------------------- */
 export const toggleTask = asyncHandler(async (req, res) => {
   const task = await Task.findOne({
     _id: req.params.taskId,
@@ -71,6 +100,15 @@ export const toggleTask = asyncHandler(async (req, res) => {
   task.completed = !task.completed;
   await task.save();
 
-  cache.del(`skills_${req.user._id}`);
+  // ❗ clear skills cache (progress changes)
+  clearUserSkillCache(req.user._id);
+
+  // ❗ clear all task caches for this skill
+  cache.keys().forEach((key) => {
+    if (key.startsWith(`tasks_${req.user._id}_${task.skill}`)) {
+      cache.del(key);
+    }
+  });
+
   res.status(200).json(task);
 });
