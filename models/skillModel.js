@@ -18,4 +18,6 @@ const skillSchema = new mongoose.Schema(
   {timestamps: true},
 );
 
+skillSchema.index({name: "text"});
+
 export default mongoose.model("Skill", skillSchema);

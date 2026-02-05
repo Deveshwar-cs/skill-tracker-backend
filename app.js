@@ -3,6 +3,7 @@ import noteRoutes from "./routes/noteRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import skillRoutes from "./routes/skillRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
+import rateLimit from "express-rate-limit";
 import {notFound, errorHandler} from "./middleware/errorMiddleware.js";
 import cors from "cors";
 
@@ -13,6 +14,14 @@ const allowedOrigins = [
   "https://skill-tracker-frontend-kxbyaq967-logic-lords.vercel.app",
   "https://skill-tracker-frontend-git-main-logic-lords.vercel.app",
 ];
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: "Too many requests, please try again later.",
+});
+
+app.use(limiter);
 
 app.use(
   cors({
